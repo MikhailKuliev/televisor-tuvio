@@ -10,7 +10,7 @@ import android.widget.*;
 import java.util.*;
 
 public class Home extends Activity {
-    static final String[] FEATURE={"com.yandex.tv.ytplayer","com.fgl27.twitch","com.phlox.tvwebbrowser"};
+    static final String[] FEATURE={"com.yandex.tv.ytplayer","com.fgl27.twitch","com.phlox.tvwebbrowser","com.vk.tv"};
     static final String[] TOOLS={"su.happ.proxyutility","com.yandex.tv.music","org.fdroid.fdroid","com.cultraview.newfilemanager"};
     LinearLayout page,grid,row;
     boolean library;
@@ -37,7 +37,7 @@ public class Home extends Activity {
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(43));lp.rightMargin=dp(8);bar.addView(b,lp);return b;
     }
     void render(boolean all){
-        library=all;page=new LinearLayout(this);page.setOrientation(1);page.setPadding(dp(35),dp(22),dp(35),dp(12));
+        stopAlbum(); library=all;page=new LinearLayout(this);page.setOrientation(1);page.setPadding(dp(35),dp(22),dp(35),dp(12));
         page.setBackground(paint(0xff264d9c,0xff0a2047,0));setContentView(page);
         LinearLayout nav=new LinearLayout(this);nav.setGravity(Gravity.CENTER_VERTICAL);page.addView(nav);
         tab(nav,"Главная",!all,()->render(false));more=tab(nav,"Остальные",all,()->render(true));
@@ -46,13 +46,44 @@ public class Home extends Activity {
         TextClock clock=new TextClock(this);clock.setFormat24Hour("HH:mm");clock.setTextColor(-1);clock.setTextSize(30);nav.addView(clock);
         ScrollView sv=new ScrollView(this);page.addView(sv);grid=new LinearLayout(this);grid.setOrientation(1);sv.addView(grid);
         if(all){showLibrary();more.requestFocus();return;}
-        section("Смотреть",30);startRow(3);
+        section("Смотреть",30);startRow(4);
         card(FEATURE[0],"YouTube","Видео",0xff245eab,0xff102f65,true).requestFocus();
         card(FEATURE[1],"Twitch","Трансляции",0xff6652b4,0xff342c79,true);
         card(FEATURE[2],"TV Bro","Браузер",0xff22778f,0xff16416f,true);
+        card(FEATURE[3],"VK Видео","Видео",0xff397be1,0xff224582,true);
+        addResumePanel();
         section("Под рукой",20);startRow(4);
         String[] names={"Happ","Яндекс Музыка","F-Droid","Файлы"};
         for(int i=0;i<TOOLS.length;i++)card(TOOLS[i],names[i],"",0xff2c528b,0xff183666,false);
+    }
+    final android.os.Handler timer=new android.os.Handler(android.os.Looper.getMainLooper());
+    ImageView photo;
+    int slide;
+    boolean visible;
+    TextView resumeLabel;
+    final Runnable rotate=new Runnable(){public void run(){
+        if(!visible || library || photo==null)return;
+        java.io.File base=getExternalFilesDir(null);
+        if(base==null)return;
+        java.io.File file=new java.io.File(base,"album/"+(slide%5)+".jpg");
+        Bitmap frame=BitmapFactory.decodeFile(file.getPath());
+        if(frame!=null){photo.setImageBitmap(frame);photo.setVisibility(View.VISIBLE);}
+        slide++;timer.postDelayed(this,30000);
+    }};
+    void stopAlbum(){timer.removeCallbacks(rotate);photo=null;}
+    @Override protected void onPause(){visible=false;timer.removeCallbacks(rotate);super.onPause();}
+    @Override protected void onResume(){super.onResume();visible=true;if(!library){refreshResume();timer.removeCallbacks(rotate);rotate.run();}}
+    void refreshResume(){if(resumeLabel!=null)resumeLabel.setText(getPreferences(0).getString("label","Выберите приложение в разделе «Смотреть»"));}
+    void addResumePanel(){
+        LinearLayout strip=new LinearLayout(this);grid.addView(strip);
+        LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setGravity(Gravity.CENTER_VERTICAL);
+        panel.setPadding(dp(18),0,dp(12),0);focus(panel,paint(0xff30578f,0xff17355f,12));
+        panel.addView(text("Продолжить просмотр",20));resumeLabel=text("",15);panel.addView(resumeLabel);refreshResume();
+        panel.setOnClickListener(v->{String pkg=getPreferences(0).getString("recent","");if(!pkg.isEmpty())open(pkg,getPreferences(0).getString("label",""));else {View next=panel.focusSearch(View.FOCUS_UP);if(next!=null)next.requestFocus();}});
+        LinearLayout.LayoutParams main=new LinearLayout.LayoutParams(0,dp(82),1);main.setMargins(dp(5),dp(7),dp(5),0);strip.addView(panel,main);
+        photo=new ImageView(this);photo.setScaleType(ImageView.ScaleType.FIT_CENTER);photo.setBackground(paint(0xff193864,0xff142c52,12));photo.setClipToOutline(true);photo.setVisibility(View.GONE);
+        LinearLayout.LayoutParams side=new LinearLayout.LayoutParams(dp(142),dp(82));side.setMargins(dp(5),dp(7),dp(5),0);strip.addView(photo,side);
+        if(visible)rotate.run();
     }
     void section(String name,int size){TextView t=text(name,size);t.setPadding(dp(6),dp(15),0,dp(6));grid.addView(t);}
     void startRow(int columns){row=new LinearLayout(this);row.setWeightSum(columns);grid.addView(row);}
@@ -64,7 +95,7 @@ public class Home extends Activity {
         if(hero)box.addView(new Space(this),new LinearLayout.LayoutParams(1,0,1));
         box.addView(text(label,hero?24:16));if(hero){TextView sub=text(subtitle,13);sub.setTextColor(0xffcedef7);box.addView(sub);}
         box.setContentDescription(label);box.setOnClickListener(v->open(pkg,label));
-        LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(0,dp(hero?140:84),1);cell.setMargins(dp(5),dp(4),dp(5),dp(5));row.addView(box,cell);return box;
+        LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(0,dp(hero?110:72),1);cell.setMargins(dp(5),dp(4),dp(5),dp(5));row.addView(box,cell);return box;
     }
     void showLibrary(){
         section("Остальные приложения",26);
@@ -84,8 +115,10 @@ public class Home extends Activity {
         Intent intent=pkg.isEmpty()?new Intent(Settings.ACTION_SETTINGS):getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
         if(pkg.equals("com.yandex.tv.music"))intent=new Intent("com.yandex.tv.music.SHOW_MUSIC_PLAYER").setPackage(pkg);
         if(intent==null)intent=getPackageManager().getLaunchIntentForPackage(pkg);
-        if(intent!=null){try{startActivity(intent);return;}catch(RuntimeException ignored){}}
+        if(intent!=null){try{startActivity(intent);if(Arrays.asList(FEATURE).contains(pkg)){getPreferences(0).edit().putString("recent",pkg).putString("label",label).apply();}return;}catch(RuntimeException ignored){}}
         Toast.makeText(this,"Не удалось открыть "+label,Toast.LENGTH_SHORT).show();
     }
 }
+
+
 
