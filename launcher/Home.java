@@ -36,16 +36,15 @@ public class Home extends Activity {
         focus(b,paint(active?0xff3466bd:0xff193967,0xff183b71,24));b.setOnClickListener(v->action.run());
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(43));lp.rightMargin=dp(8);bar.addView(b,lp);return b;
     }
-    // A single background redraw every two seconds; navigation keeps its normal frame rate.
+    // A single background redraw four times per second; navigation keeps its normal frame rate.
     GradientDrawable ambient;
     int phase;
     final Runnable shiftBlue=new Runnable(){
         public void run(){
             if(!visible || ambient==null)return;
-            double wave=Math.sin(phase++ * Math.PI/16);
-            int step=(int)Math.round(5*wave);
-            ambient.setColors(new int[]{Color.rgb(49+step,92+step,171+step),Color.rgb(9,26-step/2,55-step/2)});
-            timer.postDelayed(this,2000);
+            double wave=Math.sin((phase++ % 64)*Math.PI/32);
+            ambient.setColors(new int[]{Color.rgb(46+(int)(22*wave),93-(int)(31*wave),173+(int)(26*wave)),Color.rgb(11,31+(int)(9*wave),65+(int)(15*wave))});
+            timer.postDelayed(this,250);
         }
     };
     void render(boolean all){
@@ -181,6 +180,7 @@ public class Home extends Activity {
         Toast.makeText(this,"Не удалось открыть "+label,Toast.LENGTH_SHORT).show();
     }
 }
+
 
 
 
