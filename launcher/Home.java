@@ -36,9 +36,21 @@ public class Home extends Activity {
         focus(b,paint(active?0xff3466bd:0xff193967,0xff183b71,24));b.setOnClickListener(v->action.run());
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(43));lp.rightMargin=dp(8);bar.addView(b,lp);return b;
     }
+    // A single background redraw every two seconds; navigation keeps its normal frame rate.
+    GradientDrawable ambient;
+    int phase;
+    final Runnable shiftBlue=new Runnable(){
+        public void run(){
+            if(!visible || ambient==null)return;
+            double wave=Math.sin(phase++ * Math.PI/16);
+            int step=(int)Math.round(5*wave);
+            ambient.setColors(new int[]{Color.rgb(49+step,92+step,171+step),Color.rgb(9,26-step/2,55-step/2)});
+            timer.postDelayed(this,2000);
+        }
+    };
     void render(boolean all){
         stopAlbum(); library=all;page=new LinearLayout(this);page.setOrientation(1);page.setPadding(dp(35),dp(22),dp(35),dp(12));
-        page.setBackground(paint(0xff315cab,0xff091a37,0));setContentView(page);
+        ambient=paint(0xff315cab,0xff091a37,0);page.setBackground(ambient);setContentView(page);
         LinearLayout nav=new LinearLayout(this);nav.setGravity(Gravity.CENTER_VERTICAL);page.addView(nav);
         tab(nav,"Главная",!all,()->render(false));more=tab(nav,"Приложения",all,()->render(true));
         tab(nav,"Настройки",false,()->open("","Настройки"));
@@ -71,8 +83,8 @@ public class Home extends Activity {
         slide++;timer.postDelayed(this,30000);
     }};
     void stopAlbum(){timer.removeCallbacks(rotate);photo=null;}
-    @Override protected void onPause(){visible=false;timer.removeCallbacks(rotate);super.onPause();}
-    @Override protected void onResume(){super.onResume();visible=true;if(!library){refreshResume();timer.removeCallbacks(rotate);rotate.run();}}
+    @Override protected void onPause(){visible=false;timer.removeCallbacks(shiftBlue);timer.removeCallbacks(rotate);super.onPause();}
+    @Override protected void onResume(){super.onResume();visible=true;timer.removeCallbacks(shiftBlue);shiftBlue.run();if(!library){refreshResume();timer.removeCallbacks(rotate);rotate.run();}}
     Intent playback;
     String systemTitle;
     TextView position;
@@ -169,6 +181,7 @@ public class Home extends Activity {
         Toast.makeText(this,"Не удалось открыть "+label,Toast.LENGTH_SHORT).show();
     }
 }
+
 
 
 

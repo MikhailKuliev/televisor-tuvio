@@ -2,11 +2,11 @@
 
 Лёгкий главный экран для Tuvio TD50UFBSV1 на Android 11. Верхний ряд открывает YouTube, Twitch, TV Bro и VK Видео. Вкладка «Приложения» показывает остальные приложения с интерфейсом запуска, включая установленные вручную. На главном экране «Назад» сохраняет фокус в лаунчере, в библиотеке возвращает на главную.
 
-## Установка версии 1.4
+## Установка версии 1.5
 
-Скачайте [подписанный APK](TuvioHome-v1.4.apk). На компьютере с Android Platform Tools подключитесь по ADB к своему телевизору. Выполняйте команды при одном подключённом устройстве.
+Скачайте [подписанный APK](TuvioHome-v1.5.apk). На компьютере с Android Platform Tools подключитесь по ADB к своему телевизору. Выполняйте команды при одном подключённом устройстве.
 
-    adb install -r TuvioHome-v1.4.apk
+    adb install -r TuvioHome-v1.5.apk
     adb shell am start -n local.tuvio.home/.Home
     adb shell cmd package set-home-activity --user 0 local.tuvio.home/.Home
     adb shell input keyevent 3
@@ -28,3 +28,4 @@
 
 
 Панель продолжения открывает ссылку из Android Watch Next. Если список пуст, нажмите OK и сохраните HTTPS-ссылку. Долгое нажатие OK открывает редактор закладки. Для чтения Watch Next после установки: adb shell pm grant local.tuvio.home android.permission.READ_TV_LISTINGS.
+
