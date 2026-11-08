@@ -3,66 +3,82 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.content.Intent;
 import android.provider.Settings;
-import android.graphics.Color;
+import android.graphics.*;
 import android.graphics.drawable.GradientDrawable;
 import android.view.*;
 import android.widget.*;
+import java.util.*;
 
 public class Home extends Activity {
-    final String[] names={"YouTube","TV Bro","Happ","Кинопоиск","VK Видео","Файлы","Настройки"};
-    final String[] packages={"com.yandex.tv.ytplayer","com.phlox.tvwebbrowser","su.happ.proxyutility","ru.kinopoisk.yandex.tv","com.vk.tv","com.cultraview.newfilemanager",""};
-    final int[] colors={0xffb52626,0xff165cab,0xff337164,0xffb64913,0xff165cab,0xff624478,0xff53617a};
+    static final String[] FEATURE={"com.yandex.tv.ytplayer","com.fgl27.twitch","com.phlox.tvwebbrowser"};
+    static final String[] TOOLS={"su.happ.proxyutility","com.yandex.tv.music","org.fdroid.fdroid","com.cultraview.newfilemanager"};
+    LinearLayout page,grid,row;
+    boolean library;
+    Button more;
     int dp(int n){return Math.round(n*getResources().getDisplayMetrics().density);}
-    boolean library; Button libraryTile; public void onCreate(Bundle state){super.onCreate(state); render(false);} @Override public void onBackPressed(){if(library){render(false);libraryTile.requestFocus();}} void render(boolean all){
-        library=all;
-        LinearLayout page=new LinearLayout(this);
-        page.setOrientation(1);
-        page.setPadding(dp(48),dp(30),dp(48),dp(30));
-        page.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{0xff354773,0xff181421}));
-        setContentView(page);
-        LinearLayout header=new LinearLayout(this);
-        page.addView(header);
-        TextView title=new TextView(this);
-        title.setText(all?"Приложения":"Главный экран"); title.setTextSize(32); title.setTextColor(Color.WHITE);
-        header.addView(title,new LinearLayout.LayoutParams(0,-2,1));
-        TextClock clock=new TextClock(this); clock.setTextSize(20); header.addView(clock);
-        ScrollView scroll=new ScrollView(this);
-        page.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        LinearLayout grid=new LinearLayout(this); grid.setOrientation(1); scroll.addView(grid);
-        java.util.LinkedHashMap<String,String> apps=new java.util.LinkedHashMap<>();
-        if(!all){
-            for(int i=0;i<3;i++) apps.put(packages[i],names[i]);
-            apps.put("#library","Приложения"); apps.put("com.yandex.tv.music","Яндекс Музыка");
-            apps.put("org.fdroid.fdroid","F-Droid");
-            for(int i=3;i<packages.length;i++)apps.put(packages[i],names[i]);
-        }else{
-            java.util.TreeMap<String,String> sorted=new java.util.TreeMap<>();
-            for(String category:new String[]{Intent.CATEGORY_LAUNCHER,Intent.CATEGORY_LEANBACK_LAUNCHER}){
-                Intent query=new Intent(Intent.ACTION_MAIN).addCategory(category);
-                for(android.content.pm.ResolveInfo app:getPackageManager().queryIntentActivities(query,0)){
-                    String pkg=app.activityInfo.packageName;
-                    if(!pkg.equals("com.yandex.tv.home")&&!pkg.equals(getPackageName())&&!pkg.equals("mediatek.factorymenu.ui")){
-                        String label=app.loadLabel(getPackageManager()).toString();
-                        sorted.put(label+"\n"+pkg,pkg);
-                    }
-                }
+    public void onCreate(Bundle state){super.onCreate(state); render(false);}
+    public void onBackPressed(){if(library){render(false);more.requestFocus();}}
+    GradientDrawable paint(int a,int b,int radius){
+        GradientDrawable g=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{a,b});
+        g.setCornerRadius(dp(radius));return g;
+    }
+    TextView text(String label,int size){
+        TextView t=new TextView(this);t.setText(label);t.setTextSize(size);t.setTextColor(-1);
+        t.setTypeface(Typeface.create("sans-serif-medium",0));return t;
+    }
+    void focus(View v,GradientDrawable bg){
+        v.setFocusable(true);v.setBackground(bg);
+        v.setOnFocusChangeListener((w,f)->{bg.setStroke(dp(f?3:1),f?-1:0x335da6ff);
+            w.animate().scaleX(f?1.025f:1f).scaleY(f?1.025f:1f).setDuration(100).start();});
+    }
+    Button tab(LinearLayout bar,String label,boolean active,Runnable action){
+        Button b=new Button(this);b.setAllCaps(false);b.setText(label);b.setTextSize(16);b.setTextColor(-1);
+        focus(b,paint(active?0xff3466bd:0xff193967,0xff183b71,24));b.setOnClickListener(v->action.run());
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(43));lp.rightMargin=dp(8);bar.addView(b,lp);return b;
+    }
+    void render(boolean all){
+        library=all;page=new LinearLayout(this);page.setOrientation(1);page.setPadding(dp(35),dp(22),dp(35),dp(12));
+        page.setBackground(paint(0xff264d9c,0xff0a2047,0));setContentView(page);
+        LinearLayout nav=new LinearLayout(this);nav.setGravity(Gravity.CENTER_VERTICAL);page.addView(nav);
+        tab(nav,"Главная",!all,()->render(false));more=tab(nav,"Остальные",all,()->render(true));
+        tab(nav,"Настройки",false,()->open("","Настройки"));
+        nav.addView(new Space(this),new LinearLayout.LayoutParams(0,1,1));
+        TextClock clock=new TextClock(this);clock.setFormat24Hour("HH:mm");clock.setTextColor(-1);clock.setTextSize(30);nav.addView(clock);
+        ScrollView sv=new ScrollView(this);page.addView(sv);grid=new LinearLayout(this);grid.setOrientation(1);sv.addView(grid);
+        if(all){showLibrary();more.requestFocus();return;}
+        section("Смотреть",30);startRow(3);
+        card(FEATURE[0],"YouTube","Видео",0xff245eab,0xff102f65,true).requestFocus();
+        card(FEATURE[1],"Twitch","Трансляции",0xff6652b4,0xff342c79,true);
+        card(FEATURE[2],"TV Bro","Браузер",0xff22778f,0xff16416f,true);
+        section("Под рукой",20);startRow(4);
+        String[] names={"Happ","Яндекс Музыка","F-Droid","Файлы"};
+        for(int i=0;i<TOOLS.length;i++)card(TOOLS[i],names[i],"",0xff2c528b,0xff183666,false);
+    }
+    void section(String name,int size){TextView t=text(name,size);t.setPadding(dp(6),dp(15),0,dp(6));grid.addView(t);}
+    void startRow(int columns){row=new LinearLayout(this);row.setWeightSum(columns);grid.addView(row);}
+    View card(String pkg,String label,String subtitle,int a,int b,boolean hero){
+        LinearLayout box=new LinearLayout(this);box.setOrientation(1);box.setGravity(Gravity.BOTTOM);
+        box.setPadding(dp(14),dp(10),dp(14),dp(12));focus(box,paint(a,b,15));
+        try{ImageView icon=new ImageView(this);icon.setImageDrawable(getPackageManager().getApplicationIcon(pkg));
+            box.addView(icon,new LinearLayout.LayoutParams(dp(hero?42:25),dp(hero?42:25)));}catch(Exception ignored){}
+        if(hero)box.addView(new Space(this),new LinearLayout.LayoutParams(1,0,1));
+        box.addView(text(label,hero?24:16));if(hero){TextView sub=text(subtitle,13);sub.setTextColor(0xffcedef7);box.addView(sub);}
+        box.setContentDescription(label);box.setOnClickListener(v->open(pkg,label));
+        LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(0,dp(hero?140:84),1);cell.setMargins(dp(5),dp(4),dp(5),dp(5));row.addView(box,cell);return box;
+    }
+    void showLibrary(){
+        section("Остальные приложения",26);
+        Set<String> hidden=new HashSet<>(Arrays.asList(FEATURE));hidden.addAll(Arrays.asList(TOOLS));
+        Collections.addAll(hidden,getPackageName(),"com.yandex.tv.home","mediatek.factorymenu.ui");
+        TreeMap<String,String> sorted=new TreeMap<>();
+        for(String category:new String[]{Intent.CATEGORY_LEANBACK_LAUNCHER,Intent.CATEGORY_LAUNCHER}){
+            for(android.content.pm.ResolveInfo item:getPackageManager().queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(category),0)){
+                String pkg=item.activityInfo.packageName;
+                if(hidden.add(pkg))sorted.put(item.loadLabel(getPackageManager())+"\n"+pkg,pkg);
             }
-            for(String label:sorted.keySet())apps.put(sorted.get(label),label.split("\n")[0]);
-            apps.put("com.yandex.tv.music","Яндекс Музыка");
         }
-        int index=0; LinearLayout row=null;
-        for(java.util.Map.Entry<String,String> app:apps.entrySet()){
-            if(index%3==0){row=new LinearLayout(this);row.setWeightSum(3);grid.addView(row);}
-            String pkg=app.getKey(); Button tile=new Button(this);
-            tile.setAllCaps(false); tile.setText(app.getValue()); tile.setTextColor(Color.WHITE);tile.setTextSize(20);
-            GradientDrawable bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{colors[index%colors.length],0xff202339});
-            bg.setCornerRadius(dp(15));tile.setBackground(bg);
-            tile.setOnFocusChangeListener((v,f)->{bg.setStroke(dp(3),f?Color.WHITE:Color.TRANSPARENT);v.animate().scaleX(f?1.035f:1f).scaleY(f?1.035f:1f).setDuration(110).start();});
-            tile.setOnClickListener(v->{if(pkg.equals("#library"))render(true);else open(pkg,app.getValue());});
-            LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(0,dp(93),1);cell.setMargins(dp(8),dp(8),dp(8),dp(8));row.addView(tile,cell);
-            if(pkg.equals("#library"))libraryTile=tile;
-            if(index++==0)tile.requestFocus();
-        }
+        int i=0;for(Map.Entry<String,String> e:sorted.entrySet()){if(i++%4==0)startRow(4);
+            card(e.getValue(),e.getKey().split("\n")[0],"",0xff294e88,0xff163564,false);}
     }
     void open(String pkg,String label){
         Intent intent=pkg.isEmpty()?new Intent(Settings.ACTION_SETTINGS):getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
@@ -72,3 +88,4 @@ public class Home extends Activity {
         Toast.makeText(this,"Не удалось открыть "+label,Toast.LENGTH_SHORT).show();
     }
 }
+
