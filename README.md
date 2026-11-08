@@ -1,12 +1,12 @@
 # Tuvio Home
 
-Лёгкий главный экран для Tuvio TD50UFBSV1 на Android 11. Верхний ряд открывает YouTube, Twitch, TV Bro и VK Видео. Вкладка «Остальные» показывает остальные приложения с интерфейсом запуска, включая установленные вручную. На главном экране «Назад» сохраняет фокус в лаунчере, в библиотеке возвращает на главную.
+Лёгкий главный экран для Tuvio TD50UFBSV1 на Android 11. Верхний ряд открывает YouTube, Twitch, TV Bro и VK Видео. Вкладка «Приложения» показывает остальные приложения с интерфейсом запуска, включая установленные вручную. На главном экране «Назад» сохраняет фокус в лаунчере, в библиотеке возвращает на главную.
 
-## Установка версии 1.3
+## Установка версии 1.4
 
-Скачайте [подписанный APK](TuvioHome-v1.3.apk). На компьютере с Android Platform Tools подключитесь по ADB к своему телевизору. Выполняйте команды при одном подключённом устройстве.
+Скачайте [подписанный APK](TuvioHome-v1.4.apk). На компьютере с Android Platform Tools подключитесь по ADB к своему телевизору. Выполняйте команды при одном подключённом устройстве.
 
-    adb install -r TuvioHome-v1.3.apk
+    adb install -r TuvioHome-v1.4.apk
     adb shell am start -n local.tuvio.home/.Home
     adb shell cmd package set-home-activity --user 0 local.tuvio.home/.Home
     adb shell input keyevent 3
@@ -26,3 +26,5 @@
 Для сборки использованы JDK 17, Android SDK Platform 30 и Build Tools 34.0.0. Home.java компилируется javac с --release 8 и android.jar в classpath. D8 преобразует классы в classes.dex. AAPT упаковывает манифест, после добавления classes.dex APK выравнивается zipalign и подписывается apksigner. Обновление установленного приложения требует того же ключа подписи.
 
 
+
+Панель продолжения открывает ссылку из Android Watch Next. Если список пуст, нажмите OK и сохраните HTTPS-ссылку. Долгое нажатие OK открывает редактор закладки. Для чтения Watch Next после установки: adb shell pm grant local.tuvio.home android.permission.READ_TV_LISTINGS.

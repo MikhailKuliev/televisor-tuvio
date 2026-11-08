@@ -38,9 +38,9 @@ public class Home extends Activity {
     }
     void render(boolean all){
         stopAlbum(); library=all;page=new LinearLayout(this);page.setOrientation(1);page.setPadding(dp(35),dp(22),dp(35),dp(12));
-        page.setBackground(paint(0xff264d9c,0xff0a2047,0));setContentView(page);
+        page.setBackground(paint(0xff315cab,0xff091a37,0));setContentView(page);
         LinearLayout nav=new LinearLayout(this);nav.setGravity(Gravity.CENTER_VERTICAL);page.addView(nav);
-        tab(nav,"Главная",!all,()->render(false));more=tab(nav,"Остальные",all,()->render(true));
+        tab(nav,"Главная",!all,()->render(false));more=tab(nav,"Приложения",all,()->render(true));
         tab(nav,"Настройки",false,()->open("","Настройки"));
         nav.addView(new Space(this),new LinearLayout.LayoutParams(0,1,1));
         TextClock clock=new TextClock(this);clock.setFormat24Hour("HH:mm");clock.setTextColor(-1);clock.setTextSize(30);nav.addView(clock);
@@ -73,13 +73,63 @@ public class Home extends Activity {
     void stopAlbum(){timer.removeCallbacks(rotate);photo=null;}
     @Override protected void onPause(){visible=false;timer.removeCallbacks(rotate);super.onPause();}
     @Override protected void onResume(){super.onResume();visible=true;if(!library){refreshResume();timer.removeCallbacks(rotate);rotate.run();}}
-    void refreshResume(){if(resumeLabel!=null)resumeLabel.setText(getPreferences(0).getString("label","Выберите приложение в разделе «Смотреть»"));}
+    Intent playback;
+    String systemTitle;
+    TextView position;
+    ProgressBar progress;
+    void refreshResume(){
+        if(resumeLabel==null)return;
+        playback=null;systemTitle=null;long elapsed=0,total=0;
+        android.net.Uri feed=android.net.Uri.parse("content://android.media.tv/watch_next_program");
+        String[] fields={"title","intent_uri","package_name","last_playback_position_millis","duration_millis"};
+        try(android.database.Cursor c=getContentResolver().query(feed,fields,"watch_next_type=0 AND browsable=1",null,"last_engagement_time_utc_millis DESC")){
+            while(c!=null && c.moveToNext()){
+                if(c.getString(1)==null || c.getString(2)==null)continue;
+                Intent target=Intent.parseUri(c.getString(1),Intent.URI_INTENT_SCHEME);
+                if(target.getData()==null || target.getSelector()!=null)continue;
+                target.setComponent(null);target.setPackage(c.getString(2));target.setFlags(0);
+                if(target.resolveActivity(getPackageManager())==null)continue;
+                playback=target;systemTitle=c.getString(0);elapsed=c.getLong(3);total=c.getLong(4);break;
+            }
+        }catch(Exception ignored){}
+        String link=getPreferences(0).getString("videoUrl","");
+        String title=getPreferences(0).getString("videoTitle","");
+        if(playback==null && !link.isEmpty())playback=videoIntent(link);
+        resumeLabel.setText(playback==null?"Добавить видео по ссылке":systemTitle!=null?systemTitle:title);
+        position.setText(playback==null?"Сохраните ссылку на ролик для следующего просмотра":elapsed>0?"Просмотрено: "+elapsed/60000+" мин":"Открыть видео");
+        progress.setVisibility(total>0&&elapsed>0?View.VISIBLE:View.GONE);
+        if(total>0)progress.setProgress((int)Math.min(100,100.0*elapsed/total));
+    }
+    Intent videoIntent(String link){
+        android.net.Uri uri=android.net.Uri.parse(link);
+        Intent target=new Intent(Intent.ACTION_VIEW,uri);
+        String host=uri.getHost()==null?"":uri.getHost().toLowerCase(Locale.ROOT);
+        String pkg=(host.equals("youtu.be")||host.equals("youtube.com")||host.endsWith(".youtube.com"))?FEATURE[0]:
+            (host.equals("vkvideo.ru")||host.equals("vk.com")||host.endsWith(".vk.com"))?FEATURE[3]:FEATURE[2];
+        target.setPackage(pkg);
+        if(target.resolveActivity(getPackageManager())==null)target.setPackage(FEATURE[2]);
+        return target;
+    }
+    void editVideo(){
+        LinearLayout fields=new LinearLayout(this);fields.setOrientation(1);fields.setPadding(dp(20),0,dp(20),0);
+        EditText url=new EditText(this);url.setSingleLine();url.setInputType(17);url.setHint("https://…");url.setText(getPreferences(0).getString("videoUrl",""));fields.addView(url);
+        EditText name=new EditText(this);name.setSingleLine();name.setHint("Название ролика");name.setText(getPreferences(0).getString("videoTitle",""));fields.addView(name);
+        android.app.AlertDialog dialog=new android.app.AlertDialog.Builder(this).setTitle("Сохранить видео").setView(fields)
+            .setPositiveButton("Сохранить",null).setNegativeButton("Отмена",null).setNeutralButton("Очистить",(d,w)->{getPreferences(0).edit().remove("videoUrl").remove("videoTitle").apply();refreshResume();}).create();
+        dialog.show();dialog.getButton(-1).setOnClickListener(v->{String link=url.getText().toString().trim();android.net.Uri uri=android.net.Uri.parse(link);
+            if(!"https".equalsIgnoreCase(uri.getScheme())||uri.getHost()==null||uri.getPath()==null||uri.getPath().length()<2){url.setError("Введите HTTPS-ссылку на видео");return;}
+            String label=name.getText().toString().trim();getPreferences(0).edit().putString("videoUrl",link).putString("videoTitle",label.isEmpty()?uri.getHost()+uri.getPath():label).apply();refreshResume();dialog.dismiss();});
+    }
     void addResumePanel(){
         LinearLayout strip=new LinearLayout(this);grid.addView(strip);
         LinearLayout panel=new LinearLayout(this);panel.setOrientation(1);panel.setGravity(Gravity.CENTER_VERTICAL);
         panel.setPadding(dp(18),0,dp(12),0);focus(panel,paint(0xff30578f,0xff17355f,12));
-        panel.addView(text("Продолжить просмотр",20));resumeLabel=text("",15);panel.addView(resumeLabel);refreshResume();
-        panel.setOnClickListener(v->{String pkg=getPreferences(0).getString("recent","");if(!pkg.isEmpty())open(pkg,getPreferences(0).getString("label",""));else {View next=panel.focusSearch(View.FOCUS_UP);if(next!=null)next.requestFocus();}});
+        TextView eyebrow=text("ПРОДОЛЖИТЬ ПРОСМОТР",11);eyebrow.setLetterSpacing(.12f);eyebrow.setTextColor(0xffa8caff);panel.addView(eyebrow);
+        resumeLabel=text("",22);resumeLabel.setSingleLine();resumeLabel.setEllipsize(android.text.TextUtils.TruncateAt.END);panel.addView(resumeLabel);
+        position=text("",13);position.setTextColor(0xffc5daf9);panel.addView(position);
+        progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);panel.addView(progress,new LinearLayout.LayoutParams(-1,dp(3)));refreshResume();
+        panel.setOnClickListener(v->{if(playback==null){editVideo();return;}try{startActivity(playback);}catch(RuntimeException ex){Toast.makeText(this,"Не удалось открыть видео",0).show();}});
+        panel.setOnLongClickListener(v->{editVideo();return true;});
         LinearLayout.LayoutParams main=new LinearLayout.LayoutParams(0,dp(82),1);main.setMargins(dp(5),dp(7),dp(5),0);strip.addView(panel,main);
         photo=new ImageView(this);photo.setScaleType(ImageView.ScaleType.FIT_CENTER);photo.setBackground(paint(0xff193864,0xff142c52,12));photo.setClipToOutline(true);photo.setVisibility(View.GONE);
         LinearLayout.LayoutParams side=new LinearLayout.LayoutParams(dp(142),dp(82));side.setMargins(dp(5),dp(7),dp(5),0);strip.addView(photo,side);
@@ -98,7 +148,7 @@ public class Home extends Activity {
         LinearLayout.LayoutParams cell=new LinearLayout.LayoutParams(0,dp(hero?110:72),1);cell.setMargins(dp(5),dp(4),dp(5),dp(5));row.addView(box,cell);return box;
     }
     void showLibrary(){
-        section("Остальные приложения",26);
+        section("Библиотека приложений",26);
         Set<String> hidden=new HashSet<>(Arrays.asList(FEATURE));hidden.addAll(Arrays.asList(TOOLS));
         Collections.addAll(hidden,getPackageName(),"com.yandex.tv.home","mediatek.factorymenu.ui");
         TreeMap<String,String> sorted=new TreeMap<>();
@@ -115,10 +165,11 @@ public class Home extends Activity {
         Intent intent=pkg.isEmpty()?new Intent(Settings.ACTION_SETTINGS):getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
         if(pkg.equals("com.yandex.tv.music"))intent=new Intent("com.yandex.tv.music.SHOW_MUSIC_PLAYER").setPackage(pkg);
         if(intent==null)intent=getPackageManager().getLaunchIntentForPackage(pkg);
-        if(intent!=null){try{startActivity(intent);if(Arrays.asList(FEATURE).contains(pkg)){getPreferences(0).edit().putString("recent",pkg).putString("label",label).apply();}return;}catch(RuntimeException ignored){}}
+        if(intent!=null){try{startActivity(intent);return;}catch(RuntimeException ignored){}}
         Toast.makeText(this,"Не удалось открыть "+label,Toast.LENGTH_SHORT).show();
     }
 }
+
 
 
 
